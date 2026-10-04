@@ -2,12 +2,18 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Pallina Jump</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pallina Runner</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             background: #eeeeee;
+            font-family: Arial, sans-serif;
             overflow: hidden;
         }
 
@@ -21,6 +27,17 @@
             overflow: hidden;
         }
 
+        /* PUNTEGGIO */
+        #score {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* PALLINA */
         #ball {
             position: absolute;
             width: 40px;
@@ -28,9 +45,11 @@
             border-radius: 50%;
             background: blue;
             left: 100px;
-            bottom: 0;
+            bottom: 10px;
+            z-index: 5;
         }
 
+        /* TERRENO */
         #ground {
             position: absolute;
             left: 0;
@@ -39,21 +58,115 @@
             height: 10px;
             background: black;
         }
+
+        /* CACTUS */
+        .cactus {
+            position: absolute;
+            width: 25px;
+            height: 55px;
+            background: green;
+            bottom: 10px;
+            border-radius: 10px 10px 3px 3px;
+            z-index: 4;
+        }
+
+        .cactus::before {
+            content: "";
+            position: absolute;
+            width: 12px;
+            height: 30px;
+            background: green;
+            left: -9px;
+            top: 20px;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .cactus::after {
+            content: "";
+            position: absolute;
+            width: 12px;
+            height: 30px;
+            background: green;
+            right: -9px;
+            top: 10px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* STELLA */
+        .star {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            bottom: 100px;
+            font-size: 40px;
+            line-height: 40px;
+            color: gold;
+            z-index: 4;
+        }
+
+        /* SCHERMATA FINALE */
+        #gameOver {
+            display: none;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid black;
+            padding: 30px 50px;
+            z-index: 20;
+        }
+
+        #gameOver h1 {
+            margin-top: 0;
+        }
+
+        #restart {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
     </style>
 </head>
 
 <body>
 
     <div id="game">
+
+        <div id="score">Punteggio: 0</div>
+
         <div id="ball"></div>
+
         <div id="ground"></div>
+
+        <div id="gameOver">
+            <h1 id="result"></h1>
+            <p id="finalScore"></p>
+            <button id="restart">Ricomincia</button>
+        </div>
+
     </div>
+
 
     <script>
 
-        const ball = document.getElementById("ball");
+        /* =========================
+           IMPOSTAZIONI DEL GIOCO
+        ========================= */
 
-        let y = 0;
+        const game = document.getElementById("game");
+        const ball = document.getElementById("ball");
+        const scoreDisplay = document.getElementById("score");
+        const gameOverScreen = document.getElementById("gameOver");
+        const resultDisplay = document.getElementById("result");
+        const finalScoreDisplay = document.getElementById("finalScore");
+        const restartButton = document.getElementById("restart");
+
+
+        /* Posizione della pallina */
+
+        let ballY = 0;
         let velocity = 0;
 
         const gravity = -0.6;
@@ -61,34 +174,423 @@
 
         let jumping = false;
 
+
+        /* Punteggio */
+
+        let score = 0;
+
+
+        /* Velocità degli ostacoli */
+
+        const obstacleSpeed = 5;
+
+
+        /* Stato del gioco */
+
+        let gameRunning = true;
+
+
+        /* Lista degli ostacoli */
+
+        let obstacles = [];
+
+
+        /* Timer per creare nuovi ostacoli */
+
+        let spawnTimer = 0;
+
+        let nextSpawn = randomSpawnTime();
+
+
+        /* =========================
+           FUNZIONI
+        ========================= */
+
+        function randomSpawnTime() {
+
+            /*
+            Restituisce un intervallo casuale
+            tra circa 1 e 2,5 secondi.
+            */
+
+            return 60 + Math.random() * 90;
+        }
+
+
+        function updateScore(points) {
+
+            score += points;
+
+            scoreDisplay.textContent = "Punteggio: " + score;
+
+            checkGameOver();
+        }
+
+
+        function checkGameOver() {
+
+            if (score >= 50) {
+
+                endGame("HAI VINTO!");
+
+            }
+
+            if (score <= -50) {
+
+                endGame("GAME OVER");
+
+            }
+        }
+
+
+        function endGame(message) {
+
+            gameRunning = false;
+
+            resultDisplay.textContent = message;
+
+            finalScoreDisplay.textContent =
+                "Punteggio finale: " + score;
+
+            gameOverScreen.style.display = "block";
+        }
+
+
+        /* =========================
+           SALTO
+        ========================= */
+
         document.addEventListener("keydown", function(event) {
 
-            if (event.code === "Space" && !jumping) {
+            if (event.code === "Space") {
 
-                velocity = jumpPower;
-                jumping = true;
+                event.preventDefault();
 
+                if (!jumping && gameRunning) {
+
+                    velocity = jumpPower;
+
+                    jumping = true;
+                }
             }
 
         });
 
-        function gameLoop() {
 
-            velocity += gravity;
-            y += velocity;
+        /* =========================
+           CREAZIONE OSTACOLI
+        ========================= */
 
-            if (y <= 0) {
+        function createObstacle() {
 
-                y = 0;
-                velocity = 0;
-                jumping = false;
+            /*
+            Scegliamo casualmente:
+            cactus oppure stella.
+            */
+
+            const type =
+                Math.random() < 0.65
+                ? "cactus"
+                : "star";
+
+
+            const obstacle =
+                document.createElement("div");
+
+
+            obstacle.classList.add(type);
+
+
+            if (type === "star") {
+
+                obstacle.textContent = "★";
+            }
+
+
+            /*
+            L'ostacolo nasce
+            fuori dallo schermo a destra.
+            */
+
+            obstacle.style.left = "820px";
+
+
+            game.appendChild(obstacle);
+
+
+            obstacles.push({
+
+                element: obstacle,
+
+                x: 820,
+
+                type: type,
+
+                scored: false
+
+            });
+
+        }
+
+
+        /* =========================
+           COLLISIONE
+        ========================= */
+
+        function checkCollision(obstacle) {
+
+            const ballLeft = 100;
+            const ballRight = 140;
+
+            const ballBottom = ballY + 10;
+            const ballTop = ballBottom + 40;
+
+
+            const obstacleLeft = obstacle.x;
+
+
+            let obstacleWidth;
+
+            let obstacleBottom;
+
+            let obstacleHeight;
+
+
+            if (obstacle.type === "cactus") {
+
+                obstacleWidth = 25;
+
+                obstacleBottom = 10;
+
+                obstacleHeight = 55;
+
+            } else {
+
+                obstacleWidth = 40;
+
+                obstacleBottom = 100;
+
+                obstacleHeight = 40;
 
             }
 
-            ball.style.bottom = y + "px";
+
+            const obstacleRight =
+                obstacleLeft + obstacleWidth;
+
+
+            const obstacleTop =
+                obstacleBottom + obstacleHeight;
+
+
+            return (
+
+                ballRight > obstacleLeft &&
+
+                ballLeft < obstacleRight &&
+
+                ballTop > obstacleBottom &&
+
+                ballBottom < obstacleTop
+
+            );
+        }
+
+
+        /* =========================
+           CICLO DEL GIOCO
+        ========================= */
+
+        function gameLoop() {
+
+            if (!gameRunning) {
+
+                return;
+            }
+
+
+            /* -------------------------
+               FISICA DELLA PALLINA
+            ------------------------- */
+
+            velocity += gravity;
+
+            ballY += velocity;
+
+
+            if (ballY <= 0) {
+
+                ballY = 0;
+
+                velocity = 0;
+
+                jumping = false;
+            }
+
+
+            ball.style.bottom =
+                (ballY + 10) + "px";
+
+
+            /* -------------------------
+               CREAZIONE OSTACOLI
+            ------------------------- */
+
+            spawnTimer++;
+
+
+            if (spawnTimer >= nextSpawn) {
+
+                createObstacle();
+
+                spawnTimer = 0;
+
+                nextSpawn = randomSpawnTime();
+            }
+
+
+            /* -------------------------
+               MOVIMENTO OSTACOLI
+            ------------------------- */
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+
+                const obstacle = obstacles[i];
+
+
+                obstacle.x -= obstacleSpeed;
+
+
+                obstacle.element.style.left =
+                    obstacle.x + "px";
+
+
+                /* -------------------------
+                   COLLISIONE
+                ------------------------- */
+
+                if (checkCollision(obstacle)) {
+
+                    if (!obstacle.scored) {
+
+                        obstacle.scored = true;
+
+
+                        if (obstacle.type === "cactus") {
+
+                            updateScore(-5);
+
+                        } else {
+
+                            updateScore(5);
+                        }
+                    }
+                }
+
+
+                /* -------------------------
+                   CACTUS SUPERATO
+                ------------------------- */
+
+                if (
+
+                    obstacle.type === "cactus" &&
+
+                    !obstacle.scored &&
+
+                    obstacle.x < 100
+
+                ) {
+
+                    /*
+                    Se siamo arrivati qui,
+                    il cactus è stato superato.
+
+                    Controlliamo se la pallina
+                    era sufficientemente alta.
+                    */
+
+                    if (ballY > 45) {
+
+                        updateScore(2);
+                    }
+
+
+                    obstacle.scored = true;
+                }
+
+
+                /* -------------------------
+                   ELIMINAZIONE OSTACOLO
+                ------------------------- */
+
+                if (obstacle.x < -80) {
+
+                    obstacle.element.remove();
+
+                    obstacles.splice(i, 1);
+                }
+
+            }
+
 
             requestAnimationFrame(gameLoop);
         }
+
+
+        /* =========================
+           RICOMINCIA
+        ========================= */
+
+        restartButton.addEventListener("click", function() {
+
+            /*
+            Eliminiamo gli ostacoli
+            ancora presenti.
+            */
+
+            obstacles.forEach(function(obstacle) {
+
+                obstacle.element.remove();
+
+            });
+
+
+            obstacles = [];
+
+
+            ballY = 0;
+
+            velocity = 0;
+
+            jumping = false;
+
+
+            score = 0;
+
+            scoreDisplay.textContent =
+                "Punteggio: 0";
+
+
+            spawnTimer = 0;
+
+            nextSpawn = randomSpawnTime();
+
+
+            gameRunning = true;
+
+            gameOverScreen.style.display =
+                "none";
+
+
+            requestAnimationFrame(gameLoop);
+
+        });
+
+
+        /* =========================
+           AVVIO
+        ========================= */
 
         gameLoop();
 
