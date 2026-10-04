@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Pallina Jump</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #eeeeee;
+            overflow: hidden;
+        }
+
+        #game {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            margin: 50px auto;
+            background: white;
+            border: 2px solid black;
+            overflow: hidden;
+        }
+
+        #ball {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: blue;
+            left: 100px;
+            bottom: 0;
+        }
+
+        #ground {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 10px;
+            background: black;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="game">
+        <div id="ball"></div>
+        <div id="ground"></div>
+    </div>
+
+    <script>
+
+        const ball = document.getElementById("ball");
+
+        let y = 0;
+        let velocity = 0;
+
+        const gravity = -0.6;
+        const jumpPower = 12;
+
+        let jumping = false;
+
+        document.addEventListener("keydown", function(event) {
+
+            if (event.code === "Space" && !jumping) {
+
+                velocity = jumpPower;
+                jumping = true;
+
+            }
+
+        });
+
+        function gameLoop() {
+
+            velocity += gravity;
+            y += velocity;
+
+            if (y <= 0) {
+
+                y = 0;
+                velocity = 0;
+                jumping = false;
+
+            }
+
+            ball.style.bottom = y + "px";
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+
+    </script>
+
+</body>
+</html>
